@@ -1,0 +1,193 @@
+server:
+
+import java.io.*;
+import java.net.*;
+import java.security.*;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+
+public class server {
+    private static List<ClientHandler> clients = new ArrayList<>();
+
+    public static void main(String[] args) throws Exception {
+        // Explicitly register Bouncy Castle provider
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+
+        ServerSocket serverSocket = new ServerSocket(12345);
+        System.out.println("Server started. Waiting for clients...");
+
+        while (true) {
+            Socket clientSocket = serverSocket.accept();
+            System.out.println("Client connected: " + clientSocket);
+
+            ClientHandler clientHandler = new ClientHandler(clientSocket);
+            clients.add(clientHandler);
+            clientHandler.start();
+        }
+    }
+
+    private static String bytesToBase64(byte[] bytes) {
+        return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    public static void broadcastMessage(String message) {
+        System.out.println("Broadcasting message: " + message);
+        for (ClientHandler clientHandler : clients) {
+            clientHandler.sendMessage(message);
+        }
+    }
+
+    public static void removeClient(ClientHandler clientHandler) {
+        clients.remove(clientHandler);
+        System.out.println("Client disconnected. Total clients: " + clients.size());
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+client:
+
+import java.io.*;
+import java.net.*;
+import javax.crypto.Cipher;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PublicKey;
+import java.security.Security;
+import java.util.Base64;
+
+public class client {
+
+    public static void main(String[] args) throws Exception {
+        // Explicitly register Bouncy Castle provider
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+
+        // Connect to the server
+        Socket socket = new Socket("localhost", 12345);
+        System.out.println("Connected to server.");
+
+        BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
+        PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+
+        // Send ECC public key to the server
+        PublicKey clientPublicKey = generateECCKeyPair().getPublic();
+        String publicKeyBase64 = bytesToBase64(clientPublicKey.getEncoded());
+        out.println(publicKeyBase64);
+
+        // Thread for reading messages from the server
+        Thread readThread = new Thread(() -> {
+            try {
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    System.out.println("Received encrypted message from server: " + inputLine);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        readThread.start();
+
+        // Thread for sending messages to the server
+        while (true) {
+            String message = userInput.readLine();
+            try {
+                String encryptedMessage = encryptECC(message, clientPublicKey);
+                out.println(encryptedMessage);
+            } catch (Exception e) {
+                System.err.println("Error encrypting message: " + e.getMessage());
+            }
+        }
+    }
+
+    private static KeyPair generateECCKeyPair() throws Exception {
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "BC");
+        keyGen.initialize(256); // 256-bit key size
+        return keyGen.generateKeyPair();
+    }
+
+    private static String encryptECC(String plainText, PublicKey publicKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("ECIES", "BC");
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+
+        byte[] encryptedBytes = cipher.doFinal(plainText.getBytes());
+        return Base64.getEncoder().encodeToString(encryptedBytes);
+    }
+
+    private static String bytesToBase64(byte[] bytes) {
+        return Base64.getEncoder().encodeToString(bytes);
+    }
+}
+
+
+
+
+
+
+
+clienthandler:
+import java.io.*;
+import java.net.*;
+import java.security.*;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
+
+public class ClientHandler extends Thread {
+    private Socket clientSocket;
+    private PrintWriter out;
+    private BufferedReader in;
+    private PublicKey clientPublicKey;
+
+    public ClientHandler(Socket socket) {
+        this.clientSocket = socket;
+    }
+
+    public void sendMessage(String message) {
+        out.println(message);
+    }
+
+    @Override
+    public void run() {
+        try {
+            out = new PrintWriter(clientSocket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+
+            System.out.println("Waiting for client's ECC public key...");
+            String publicKeyBase64 = in.readLine();
+            System.out.println("Received client's ECC public key: " + publicKeyBase64);
+
+            byte[] publicKeyBytes = Base64.getDecoder().decode(publicKeyBase64);
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicKeyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("EC", "BC");
+            clientPublicKey = keyFactory.generatePublic(keySpec);
+
+            String inputLine;
+            while ((inputLine = in.readLine()) != null) {
+                System.out.println("Received encrypted message from client: " + inputLine);
+                server.broadcastMessage(inputLine); // Broadcast the encrypted message to all clients
+            }
+
+            // Broadcast when client disconnects
+            System.out.println("Client disconnected.");
+            server.removeClient(this);
+
+            in.close();
+            out.close();
+            clientSocket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
