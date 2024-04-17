@@ -8,5 +8,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="bouncycastle.bcprov.jdk15on" level="project" />
+    <orderEntry type="library" exported="" name="bouncycastle.bcpkix.jdk15on" level="project" />
   </component>
 </module>
