@@ -1,10 +1,9 @@
 import java.io.*;
 import java.net.*;
 import javax.crypto.Cipher;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PublicKey;
-import java.security.Security;
+import java.security.*;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 public class client {
@@ -17,11 +16,13 @@ public class client {
         Socket socket = new Socket("localhost", 12345);
         System.out.println("Connected to server.");
 
-        BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
-        PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+        // Generate ECC key pair
+        KeyPair keyPair = generateECCKeyPair();
+        PublicKey clientPublicKey = keyPair.getPublic();
+        PrivateKey clientPrivateKey = keyPair.getPrivate();
 
         // Send ECC public key to the server
-        PublicKey clientPublicKey = generateECCKeyPair().getPublic();
+        PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
         String publicKeyBase64 = bytesToBase64(clientPublicKey.getEncoded());
         out.println(publicKeyBase64);
 
@@ -31,7 +32,8 @@ public class client {
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 String inputLine;
                 while ((inputLine = in.readLine()) != null) {
-                    System.out.println("Received encrypted message from server: " + inputLine);
+                    String decryptedMessage = decryptECC(inputLine, clientPrivateKey);
+                    System.out.println("Received decrypted message from server: " + decryptedMessage);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -40,6 +42,7 @@ public class client {
         readThread.start();
 
         // Thread for sending messages to the server
+        BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
         while (true) {
             String message = userInput.readLine();
             try {
@@ -63,6 +66,15 @@ public class client {
 
         byte[] encryptedBytes = cipher.doFinal(plainText.getBytes());
         return Base64.getEncoder().encodeToString(encryptedBytes);
+    }
+
+    private static String decryptECC(String encryptedText, PrivateKey privateKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("ECIES", "BC");
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+
+        byte[] encryptedBytes = Base64.getDecoder().decode(encryptedText);
+        byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+        return new String(decryptedBytes);
     }
 
     private static String bytesToBase64(byte[] bytes) {
