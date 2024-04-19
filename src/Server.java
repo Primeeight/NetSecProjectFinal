@@ -2,14 +2,13 @@ import javax.crypto.Cipher;
 import java.io.*;
 import java.net.*;
 import java.security.*;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class server {
+public class Server {
     private static List<ClientHandler> clients = new ArrayList<>();
     static Map<ClientHandler, PublicKey> clientPublicKeys = new HashMap<>();
     private static PublicKey serverPublicKey;
@@ -18,7 +17,7 @@ public class server {
     public static void main(String[] args) throws Exception {
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
-        KeyPair serverKeyPair = ECCKeyGenerator.generateECCKeyPair();
+        KeyPair serverKeyPair = ECCUtilities.generateECCKeyPair();
         serverPublicKey = serverKeyPair.getPublic();
         serverPrivateKey = serverKeyPair.getPrivate();
 
@@ -44,27 +43,13 @@ public class server {
     public static void broadcastMessage(String message) {
         for (ClientHandler clientHandler : clients) {
             try {
-                String encryptedMessage = encryptECC(message, clientPublicKeys.get(clientHandler));
+                String encryptedMessage = ECCUtilities.encryptECC(message, clientPublicKeys.get(clientHandler));
                 System.out.println("Sending message to: " + clientHandler.getClientAddress() + " - " + encryptedMessage);
                 clientHandler.sendMessage(encryptedMessage);
             } catch (Exception e) {
                 System.err.println("Error encrypting message for client: " + e.getMessage());
             }
         }
-    }
-
-    public static String encryptECC(String plainText, PublicKey publicKey) throws Exception {
-        Cipher cipher = Cipher.getInstance("ECIES", "BC");
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        byte[] encryptedBytes = cipher.doFinal(plainText.getBytes());
-        return Base64.getEncoder().encodeToString(encryptedBytes);
-    }
-
-    public static String decryptECC(String encryptedText, PrivateKey privateKey) throws Exception {  // Added privateKey parameter
-        Cipher cipher = Cipher.getInstance("ECIES", "BC");
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
-        byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedText));
-        return new String(decryptedBytes);
     }
 
     private static String bytesToBase64(byte[] bytes) {

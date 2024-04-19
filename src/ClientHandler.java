@@ -26,7 +26,7 @@ public class ClientHandler extends Thread {
             clientPublicKey = keyFactory.generatePublic(keySpec);
 
             // Update clientPublicKeys map
-            server.clientPublicKeys.put(this, clientPublicKey);
+            Server.clientPublicKeys.put(this, clientPublicKey);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -50,11 +50,11 @@ public class ClientHandler extends Thread {
 
                 System.out.println("Encrypted message from client: " + encryptedMessage);
 
-                String decryptedMessage = server.decryptECC(encryptedMessage, clientPrivateKey);  // Use client's private key for decryption
+                String decryptedMessage = ECCUtilities.decryptECC(encryptedMessage, clientPrivateKey);  // Use client's private key for decryption
                 System.out.println("Decrypted message: " + decryptedMessage);
 
                 // Broadcast the decrypted message directly
-                server.broadcastMessage(decryptedMessage);
+                Server.broadcastMessage(decryptedMessage);
             }
 
             in.close();
