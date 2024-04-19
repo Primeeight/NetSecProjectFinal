@@ -1,6 +1,5 @@
 import java.io.*;
 import java.net.*;
-import javax.crypto.Cipher;
 import java.security.*;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
@@ -10,6 +9,7 @@ public class Client {
     private static PublicKey serverPublicKey;
 
     public static void main(String[] args) throws Exception {
+        // Initializations
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
         Socket socket = new Socket("localhost", 12345);
@@ -24,6 +24,7 @@ public class Client {
         KeyFactory keyFactory = KeyFactory.getInstance("EC", "BC");
         serverPublicKey = keyFactory.generatePublic(keySpec);
 
+        // Get and print the keys
         KeyPair clientKeyPair = ECCUtilities.generateECCKeyPair();
         clientPrivateKey = clientKeyPair.getPrivate();
         PublicKey clientPublicKey = clientKeyPair.getPublic();

@@ -1,4 +1,3 @@
-import javax.crypto.Cipher;
 import java.io.*;
 import java.net.*;
 import java.security.*;
@@ -6,12 +5,15 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 public class ClientHandler extends Thread {
+    //Initializations
     private Socket clientSocket;
     private PrintWriter out;
     private BufferedReader in;
     private PublicKey clientPublicKey;
     private PrivateKey clientPrivateKey;  // Instance variable to store client's private key
 
+
+    // Sets up the server
     public ClientHandler(Socket socket, PrivateKey clientPrivateKey) {  // Modify the constructor to accept clientPrivateKey
         this.clientSocket = socket;
         this.clientPrivateKey = clientPrivateKey;  // Store clientPrivateKey
@@ -40,20 +42,16 @@ public class ClientHandler extends Thread {
         return clientSocket.getRemoteSocketAddress().toString();
     }
 
+    // Repeating server cycle
     public void run() {
         try {
             while (true) {
                 String encryptedMessage = in.readLine();
-                if (encryptedMessage == null) {
+                if (encryptedMessage == null)
                     break;
-                }
-
                 System.out.println("Encrypted message from client: " + encryptedMessage);
-
                 String decryptedMessage = ECCUtilities.decryptECC(encryptedMessage, clientPrivateKey);  // Use client's private key for decryption
                 System.out.println("Decrypted message: " + decryptedMessage);
-
-                // Broadcast the decrypted message directly
                 Server.broadcastMessage(decryptedMessage);
             }
 
