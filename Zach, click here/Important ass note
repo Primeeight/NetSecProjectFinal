@@ -1,4 +1,4 @@
-I have no fuckin clue how to properly work github. I think I did some shit but I have no goddamn clue.
+
 I tried to push all my code, and I think I did. I also made the 3 versions and slso also put them on .txt files for you in case the other stuff doesn't work.
 
 The only libraries/dependencies you need are:
@@ -18,9 +18,5 @@ The 2nd client cannot decrypt the messages sent by the first client, but the fir
 
 My guess is that it has to do with the way the keypairs are shared and generated.
 Seems like if we want a full chatroom app, each client will need to generate personal keys with the server, the clients will then send the encrypted info, the server will decrypt it, read it, RE-encrypt it multiple times for each user,
-and then send each user a copy of said message. Efficient? No. Reasonable given our scope and speed of modern machines? Yes. This might be the best way to go. I can try to work on this some more if you can't, but high-key, that might work.
-I'm not certain i will be able to do a ton more before it is technically "due" but knowing Doyle, he would be okay to give us an extra day or so to finalize this shit.
-
-1 more thing:
-a good number of the methods and wording came from Dr. GPT, so that should probably be cleaned up/dirtied just a smdidge before submitting.
+and then send each user a copy of said message.
 I have altered a lot of stuff and included some of my own stuff, so I doubt it would be a huge deal, but I would rather be safe than sorry.
